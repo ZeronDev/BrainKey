@@ -24,7 +24,6 @@ class App(ctk.CTk):
         running = ctk.CTkButton(master=self, text="실행", font=("맑은 고딕", 20))
         running.grid(row=1, column=1, padx=(5, 20), pady=5, sticky="nsew")
 
-
         recording = ctk.CTkButton(master=self, text="기록", font=("맑은 고딕", 20))
         recording.grid(row=3, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
 
@@ -32,6 +31,8 @@ class App(ctk.CTk):
         # with open(path("data","keybind.pickle"), "wb") as file:
         #     pickle.dump({}, file)
         # stopObserver(self)
+
+        #TODO: Thread 종료시킬 것
         pass
 
 ctk.set_default_color_theme("dark-blue")

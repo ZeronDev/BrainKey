@@ -1,9 +1,10 @@
 import os
-import watchdog.events
-import watchdog
+# import watchdog.events
+# import watchdog
 from Util import path
 import pickle
-import watchdog.observers
+# import watchdog.observers
+
 def reload(): return list(map(lambda fileName: os.path.splitext(fileName)[0],os.listdir(path("data"))))
 eegData = reload()
 
