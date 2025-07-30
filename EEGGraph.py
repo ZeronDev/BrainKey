@@ -5,9 +5,12 @@ from Muse import EEG_QUEUE
 import Keyboard
 from config import stopped
 
+afterID = ""
+
 class EEGGraph(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master=master)
+        self.master = master
         self.fig, self.ax = plt.subplots()
         self.fig.patch.set_facecolor("#292929")
         self.fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
@@ -30,10 +33,13 @@ class EEGGraph(ctk.CTkFrame):
 
     def updateCanvas(self):
         global stopped
+        global afterID
         if not EEG_QUEUE.empty():
             for i in range(4):
                 data = list(map(lambda x: x[i], list(EEG_QUEUE.queue)))
                 self.lines[i].set_data(range(1,len(data)+1), data)
         self.canvas.draw()
-        if not stopped:
-            self.master.after(100, self.updateCanvas)
+        if not stopped and self.master.winfo_exists():
+            print(stopped)
+            afterID = self.master.after(100, self.updateCanvas)
+            print(afterID)

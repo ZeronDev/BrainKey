@@ -3,9 +3,10 @@ from KeySelector import KeySelector
 from functools import partial
 import pickle
 import DataManager
-import Muse
 import Keyboard
-from EEGGraph import EEGGraph
+import sys
+# import Muse
+import EEGGraph
 from config import stopped
 
 
@@ -30,7 +31,7 @@ class App(ctk.CTk):
         running = ctk.CTkButton(master=self, text="실행", font=("맑은 고딕", 20))
         running.grid(row=1, column=1, padx=(5, 20), pady=5, sticky="nsew")
         
-        graph = EEGGraph(self)
+        graph = EEGGraph.EEGGraph(self)
         graph.grid(row=2, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
 
         recording = ctk.CTkButton(master=self, text="기록", font=("맑은 고딕", 20))
@@ -38,13 +39,18 @@ class App(ctk.CTk):
 
     def onExit(self):
         global stopped
+        try:
         # with open(code_code_path("data","keybind.pickle"), "wb") as file:
         #     pickle.dump({}, file)
         # stopObserver(self)
-        stopped = True
-        
-        #TODO: Thread 종료시킬 것
-        DataManager.keyBindWrite()
+            stopped = True
+            #TODO: Thread 종료시킬 것
+            self.quit()
+            self.after_cancel(EEGGraph.afterID)
+            DataManager.keyBindWrite()
+            
+        except:
+            pass
 
 ctk.set_default_color_theme("dark-blue")
 ctk.set_appearance_mode("Dark")

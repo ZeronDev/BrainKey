@@ -49,8 +49,9 @@ def pylslrecv(): #PYLSL 수신
     except Exception as e:
         print(f"[ERR] Muse Receiving Error Occurred \n{e}")
         
-sendingThread = threading.Thread(target=streaming, daemon=True)
-sendingThread.start()
+# sendingThread = threading.Thread(target=streaming, daemon=True)
+# sendingThread.start()
 
-receivingThread = threading.Thread(target=pylslrecv, daemon=True)
-receivingThread.start()
+# receivingThread = threading.Thread(target=pylslrecv, daemon=True)
+# receivingThread.start()
+#TODO

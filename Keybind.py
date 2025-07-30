@@ -1,7 +1,7 @@
 import customtkinter as ctk
 import os
 from config import path
-from DataManager import eegData, keybindMap, reload
+from DataManager import eegData, keybindMap, reload, keybindWidget
 import uuid
 from PIL import Image
 import Keyboard
@@ -12,7 +12,6 @@ class KeybindSelector(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master=master,fg_color="transparent")
         self.elements = []
-        # self.buttonList = []
         self.listElement()
         
          #UUID 저장
@@ -20,12 +19,18 @@ class KeybindSelector(ctk.CTkFrame):
     def refresh(self):
         global buttonList
         for element in self.elements:
-            element.destroy()
+            element[0].destroy()
+            element[1].destroy()
         for keymap in sum(buttonList, []):
             if keymap.winfo_exists(): 
                 keymap.destroy()
         eegData.clear()
         eegData.extend(reload())
+        
+        for i in eegData:
+            if i not in keybindMap.keys():
+                keybindMap[i] = []
+
         self.elements.clear()
         buttonList.clear()
         self.listElement()
@@ -39,49 +44,69 @@ class KeybindSelector(ctk.CTkFrame):
             _buttonList = []
             for keymap in keybindMap.get(file, []):
                 keymapButton = KeyButton(self, file, keymap)
-                keymapButton.grid(row=index, column=columnCounter, pady=6, padx=2)
+                keymapButton.bind("<Button-3>", command=(lambda _, file=file, keymapButton=keymapButton: self.keyRemove(file, keymapButton)))
+                keymapButton.grid(row=index, column=columnCounter, pady=6, padx=3)
                 columnCounter += 1
                 _buttonList.append(keymapButton)
             buttonList.append(_buttonList)
-            # keymap = ctk.CTkSegmentedButton(master=self, values=keybindMap.get(file, []), fg_color="#212121", selected_color="#206AA4", unselected_color="#1D1E1E", text_color="#ffffff")
-            # keymap.grid(row=index, column=1, pady=5, padx=3)
-            # for button in keymap._buttons_dict.values():
-            #     button.configure(border_width=1, border_color="#d4d4d4", font=("맑은 고딕", 15), width=40)
-            self.elements.append(keylabel)
+            addButton = ctk.CTkLabel(master=self, image=addImage, text="", corner_radius=7, fg_color="#292929", width=20, height=35)
+            addButton.bind(sequence="<Button-1>", command=lambda _, file=file: self.addButtonFunc(file))
+            addButton.grid(row=index, column=columnCounter, pady=6, padx=2)
+
+            self.elements.append((keylabel, addButton))
+    def keyRemove(self, file, keymapButton):
+        print("[LOG: LIST] "+str(list(map(lambda x: str(x.id)[:10], buttonList[0]))))
+        print("[LOG: TEXT] "+str(buttonList[0][-1].key))
+        print("[LOG: ID] "+str(keymapButton.id))
+        print("[LOG: INDEX] "+str(keymapButton.getIndex()))
+        del (keybindMap[file])[keymapButton.getIndex()]
+        print("[LOG: KEYMAP] "+str(keybindMap))
+        self.refresh()
+
+    def addButtonFunc(self, file):
+        keymaps = keybindMap.get(file, None)
+        if keymaps:
+            keymaps.append(None)
+        else:
+            keybindMap[file] = [None]
+
+        self.refresh()
 
 clickedButton = ""
 
 class KeyButton(ctk.CTkButton):
     def __init__(self, master, bindFile: str, key: str):
         self.bindFile = bindFile
+        self.key = key
         super().__init__(
             master=master, 
-            text=key, 
+            text=self.key, 
             font=("맑은 고딕", 18),
             border_width=1,
             border_color="#d4d4d4",
             fg_color="#292929",
-            width=35
+            width=35,
+            height=32
         )
         
         self.id = uuid.uuid4()
 
-    def _clicked(self, event=None):
+    def _clicked(self, event):
         global clickedButton
         super()._clicked(event)
         if clickedButton != self.id:
             self.configure(fg_color="#206AA4")
             clickedButton = self.id
-            index = 0
-            for buttons in buttonList:
-                idList = list(map(lambda x: x.id, buttons))
-                if self.id in idList:
-                    index = idList.index(self.id)
-                    break
+            index = self.getIndex()
             Keyboard.listenKeyboard(self.bindFile, index)
         else:
             clickedButton = ""
-        self.reloadColor()
+            self.reloadColor()
+    def getIndex(self):
+        for buttons in buttonList:
+            idList = list(map(lambda x: x.id, buttons))
+            if self.id in idList:
+                return idList.index(self.id)
 
     def reloadColor(self):
         global buttonList

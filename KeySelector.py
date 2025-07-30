@@ -74,6 +74,8 @@ class KeySelector(ctk.CTkFrame):
                 for name in names:
                     if name+".csv" in os.listdir(path=path("data")):
                         os.remove(path("data", name+".csv"))
+                        if DataManager.keybindMap.get(name, None):
+                            del DataManager.keybindMap[name]
                 self.refreshButton()
         else:
             self.other_screen.focus()
