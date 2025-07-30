@@ -1,8 +1,9 @@
 import os
 # import watchdog.events
 # import watchdog
-from Util import path
+from config import path
 import pickle
+import json
 # import watchdog.observers
 
 def reload(): return list(map(lambda fileName: os.path.splitext(fileName)[0],os.listdir(path("data"))))
@@ -12,6 +13,16 @@ eegData = reload()
 keybindWidget = None
 keybindMap = {}
 
+
+def keyBindWrite():
+    global keybindMap
+    with open(path("keybind.json"), "w") as file:
+        json.dump(keybindMap, file, indent=4, ensure_ascii=False)
+def keyBindRead():
+    global keybindMap
+    with open(path("keybind.json"), "r") as file:
+        keybindMap = json.load(file)
+keyBindRead()
 # try:
 #     with open(path("data","keybind.pickle"), "rb") as file:
 #         keybindMap = pickle.load(file)

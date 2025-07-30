@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from functools import partial
 from DataManager import eegData
+from config import path
 
 class CustomInputDialog(ctk.CTkToplevel):
     def __init__(self, title, custom=False):
@@ -13,7 +14,7 @@ class CustomInputDialog(ctk.CTkToplevel):
         self.grid_rowconfigure((0,1), weight=1)
         if not custom: 
             self.entry()
-            self.buttons()
+            self.buttons() 
         self.input = ""
     def buttons(self):
         confirm = ctk.CTkButton(master=self, text="확인", command=partial(self.confirmButton, self), font=("맑은 고딕", 20))

@@ -1,14 +1,39 @@
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import customtkinter as ctk
+from Muse import EEG_QUEUE
+import Keyboard
+from config import stopped
 
 class EEGGraph(ctk.CTkFrame):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, master):
+        super().__init__(master=master)
         self.fig, self.ax = plt.subplots()
+        self.fig.patch.set_facecolor("#292929")
+        self.fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
+        self.ax.set_facecolor("#292929")
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
-        self.line, _ = self.ax.plot([], [], "r-,")
+        self.lines = []
+        self.ax.set_xlim(0, 600)  # 혹은 적당한 데이터 길이
+        self.ax.set_ylim(-1500, 1500)
+        for spine in self.ax.spines.values():
+            spine.set_visible(False)
+        self.ax.set_xticks([]) 
+        self.ax.set_yticks([])
+        colors = ['r', 'g', 'b', 'y']#['lightcoral','gold','lightskyblue','limegreen', 'violet']
+        for x in range(4):
+            line, = self.ax.plot([], [], f"{colors[x]}-")
+            self.lines.append(line)
         self.updateCanvas()
         self.canvas.get_tk_widget().pack(fill="both",expand=True)
+
     def updateCanvas(self):
+        global stopped
+        if not EEG_QUEUE.empty():
+            for i in range(4):
+                data = list(map(lambda x: x[i], list(EEG_QUEUE.queue)))
+                self.lines[i].set_data(range(1,len(data)+1), data)
         self.canvas.draw()
+        if not stopped:
+            self.master.after(100, self.updateCanvas)

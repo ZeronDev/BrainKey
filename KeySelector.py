@@ -1,7 +1,7 @@
 import customtkinter as ctk
 import os
 from PIL import Image
-from Util import path
+from config import path
 from InputDialog import CustomInputDialog, DeleteInputDialog
 from functools import partial
 from Keybind import KeybindSelector
@@ -37,11 +37,11 @@ class KeySelector(ctk.CTkFrame):
         refresh.pack(side="right", padx=3, pady=3)
         refresh.bind(sequence="<Button-1>", command=partial(self.refreshButton, self))
 
-        DataManager.keybindWidget = self.keybindWidget = KeybindSelector(self)
-        self.keybindWidget.pack(fill="both", expand=True)
+        DataManager.keybindWidget = KeybindSelector(self)
+        DataManager.keybindWidget.pack(fill="both", expand=True)
 
     def refreshButton(self, *_):
-        self.keybindWidget.refresh()
+        DataManager.keybindWidget.refresh()
 
     def dirButton(*_):
         os.startfile(path("data"))
@@ -56,7 +56,7 @@ class KeySelector(ctk.CTkFrame):
 
             if name and name not in os.listdir(path=path("data")):
                 try:
-                    open(path("data", name), "w").close()
+                    open(path("data", name+".csv"), "w").close()
                     self.refreshButton()
                 except OSError: #잘못된 파일 이름
                     pass
@@ -72,8 +72,8 @@ class KeySelector(ctk.CTkFrame):
             names = self.other_screen.getData()
             if names:
                 for name in names:
-                    if name in os.listdir(path=path("data")):
-                        os.remove(path("data", name))
+                    if name+".csv" in os.listdir(path=path("data")):
+                        os.remove(path("data", name+".csv"))
                 self.refreshButton()
         else:
             self.other_screen.focus()
