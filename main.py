@@ -9,7 +9,6 @@ import sys
 import EEGGraph
 from config import stopped
 
-
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()

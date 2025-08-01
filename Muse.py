@@ -4,14 +4,26 @@ import threading
 from config import path
 import asyncio
 import time
+import config
+import csv
 from queue import Queue
+import numpy as np
+from InputDialog import SelectInputDialog
 
-EEG_QUEUE = Queue(600) #큐
+EEG_QUEUE = Queue(800) #큐
+EEG_DATA = Queue(256)
+BUFFER = []
 
-def recordEEG(name):
-    record(duration=60, filename=path("data",name))
+def clearQueue(queue: Queue):
+    while not queue.empty():
+        queue.get()
+
 muse = None
 lslSartEvent = threading.Event()
+pauseEvent = threading.Event()
+terminateEvent = threading.Event()
+isRecorded = False
+    # record(duration=60, filename=path("data",name))
 
 def streaming(): #MUSELSL 송신
     global muse, lslSartEvent
@@ -25,14 +37,32 @@ def streaming(): #MUSELSL 송신
     except Exception as e:
         print(f"[ERR] Muse Streaming Error Occurred \n{e}")
         print(e)
+
+def recordEEG():
+    global EEG_DATA, terminateEvent, pauseEvent, BUFFER, isRecorded
+    clearQueue(EEG_DATA)
+    clearQueue(EEG_QUEUE)
+    isRecorded = True
+    
+    terminateEvent.wait()
+    isRecorded = False
+
 inlet = None
 def receiving():
-    global inlet
+    global inlet, pauseEvent, terminateEvent, isRecorded
     sample, timestamp = inlet.pull_sample(1.5)
     if EEG_QUEUE.full():
         EEG_QUEUE.get()
-    else:
-        EEG_QUEUE.put(sample)
+    EEG_QUEUE.put(sample)
+
+    if isRecorded:
+        if terminateEvent.is_set():
+            clearQueue(EEG_DATA)
+        elif not pauseEvent.is_set():
+            if EEG_DATA.full():
+                BUFFER.append(np.array(list(EEG_DATA.queue)).T.flatten())
+                clearQueue(EEG_DATA)
+            EEG_DATA.put(sample)
     # print(EEG_QUEUE.get())
 
 def pylslrecv(): #PYLSL 수신
@@ -45,13 +75,13 @@ def pylslrecv(): #PYLSL 수신
 
         while True:
             receiving()
-            time.sleep(0.1)
+            #time.sleep(0.1)
     except Exception as e:
         print(f"[ERR] Muse Receiving Error Occurred \n{e}")
         
-# sendingThread = threading.Thread(target=streaming, daemon=True)
-# sendingThread.start()
+sendingThread = threading.Thread(target=streaming, daemon=True)
+sendingThread.start()
 
-# receivingThread = threading.Thread(target=pylslrecv, daemon=True)
-# receivingThread.start()
+receivingThread = threading.Thread(target=pylslrecv, daemon=True)
+receivingThread.start()
 #TODO

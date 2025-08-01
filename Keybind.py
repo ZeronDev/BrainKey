@@ -1,13 +1,13 @@
 import customtkinter as ctk
 import os
-from config import path
+import config
 from DataManager import eegData, keybindMap, reload, keybindWidget
 import uuid
 from PIL import Image
 import Keyboard
 
 buttonList = []
-addImage = ctk.CTkImage(dark_image=Image.open(path("images", "add.png")), size=(22, 22))
+addImage = ctk.CTkImage(dark_image=Image.open(config.path("images", "add.png")), size=(22, 22))
 class KeybindSelector(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master=master,fg_color="transparent")
@@ -64,6 +64,7 @@ class KeybindSelector(ctk.CTkFrame):
         self.refresh()
 
     def addButtonFunc(self, file):
+        if config.disabled: return
         keymaps = keybindMap.get(file, None)
         if keymaps:
             keymaps.append(None)
@@ -93,6 +94,11 @@ class KeyButton(ctk.CTkButton):
 
     def _clicked(self, event):
         global clickedButton
+        if config.disabled: 
+            return
+        else: 
+            config.toggleAbility()
+            
         super()._clicked(event)
         if clickedButton != self.id:
             self.configure(fg_color="#206AA4")
@@ -102,6 +108,7 @@ class KeyButton(ctk.CTkButton):
         else:
             clickedButton = ""
             self.reloadColor()
+        config.toggleAbility()
     def getIndex(self):
         for buttons in buttonList:
             idList = list(map(lambda x: x.id, buttons))

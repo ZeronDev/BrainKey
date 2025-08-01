@@ -61,3 +61,23 @@ class DeleteInputDialog(CustomInputDialog):
             return result
         else:
             return None
+class SelectInputDialog(CustomInputDialog):
+    def __init__(self, title):
+        super().__init__(title, True)
+        self.geometry("380x300")
+        self.entry = ctk.CTkScrollableFrame(master=self, corner_radius=7)
+        self.entry.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=20, pady=(10, 15))
+        self.var = ctk.StringVar("")
+        for element in eegData:
+            radio = ctk.CTkRadioButton(master=self.entry, text=element, variable=self.var, value=element)
+            radio.pack(side="top", anchor="w", padx=7, pady=5)
+        super().buttons()
+    def confirmButton(self, _):
+        self.input = self.var
+        self.destroy()
+    def getData(self):
+        result = self.input
+        if result:
+            return result
+        else:
+            return None

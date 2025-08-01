@@ -1,7 +1,8 @@
 import customtkinter as ctk
 import os
 from PIL import Image
-from config import path
+from config import path, toggleAbility
+import config
 from InputDialog import CustomInputDialog, DeleteInputDialog
 from functools import partial
 from Keybind import KeybindSelector
@@ -14,7 +15,6 @@ refreshImage = ctk.CTkImage(dark_image=Image.open(path("images", "refresh.png"))
 
 class KeySelector(ctk.CTkFrame):
     def __init__(self, master):
-        self.other_screen = None
         super().__init__(master=master, corner_radius=7)
         topBar = ctk.CTkFrame(master=self, height=20, corner_radius=0)
         topBar.pack(fill="x", anchor="n")
@@ -23,36 +23,40 @@ class KeySelector(ctk.CTkFrame):
 
         delete = ctk.CTkLabel(master=topBar, image=deleteImage, text="")
         delete.pack(side="right", padx=3, pady=3)
-        delete.bind(sequence="<Button-1>", command=partial(self.deleteButton, self))
+        delete.bind(sequence="<Button-1>", command=self.deleteButton)
 
         add = ctk.CTkLabel(master=topBar, image=addImage, text="")
         add.pack(side="right", padx=3, pady=3)
-        add.bind(sequence="<Button-1>", command=partial(self.addButton, self))
+        add.bind(sequence="<Button-1>", command=self.addButton)
 
         folder = ctk.CTkLabel(master=topBar, image=folderImage, text="")
         folder.pack(side="right", padx=3, pady=3)
-        folder.bind(sequence="<Button-1>", command=self.dirButton)
+        folder.bind(sequence="<Button-1>", command=self.dirButton) #TODO PARTIAL 삭제함
         
         refresh = ctk.CTkLabel(master=topBar, image=refreshImage, text="")
         refresh.pack(side="right", padx=3, pady=3)
-        refresh.bind(sequence="<Button-1>", command=partial(self.refreshButton, self))
+        refresh.bind(sequence="<Button-1>", command=self.refreshButton)
 
         DataManager.keybindWidget = KeybindSelector(self)
         DataManager.keybindWidget.pack(fill="both", expand=True)
 
     def refreshButton(self, *_):
+        if config.disabled: return
         DataManager.keybindWidget.refresh()
 
-    def dirButton(*_):
+    def dirButton(self, *_):
+        if config.disabled: return
         os.startfile(path("data"))
     def addButton(self, *_):
-        if self.other_screen == None or not self.other_screen.winfo_exists():
-            self.other_screen = CustomInputDialog("데이터 파일 생성")
-            self.other_screen.focus()
-            self.other_screen.grab_set()
-            self.other_screen.wait_window()
+        if not config.disabled and (config.other_screen == None or not config.other_screen.winfo_exists()):
+            toggleAbility()
+            config.other_screen = CustomInputDialog("데이터 파일 생성")
+            config.other_screen.focus()
+            config.other_screen.grab_set()
+            config.other_screen.wait_window()
 
-            name = self.other_screen.getData()
+            name = config.other_screen.getData()
+            config.other_screen = None
 
             if name and name not in os.listdir(path=path("data")):
                 try:
@@ -60,23 +64,33 @@ class KeySelector(ctk.CTkFrame):
                     self.refreshButton()
                 except OSError: #잘못된 파일 이름
                     pass
+                finally:
+                    toggleAbility()
         else:
-            self.other_screen.focus()
+            config.other_screen.focus()
     def deleteButton(self, *_):
-        if self.other_screen == None or not self.other_screen.winfo_exists():
-            self.other_screen = DeleteInputDialog("데이터 파일 삭제")
-            self.other_screen.focus()
-            self.other_screen.grab_set()
-            self.other_screen.wait_window()
+            
+        if not config.disabled and (config.other_screen == None or not config.other_screen.winfo_exists()):
+            toggleAbility()
+            config.other_screen = DeleteInputDialog("데이터 파일 삭제")
+            config.other_screen.focus()
+            config.other_screen.grab_set()
+            config.other_screen.wait_window()
 
-            names = self.other_screen.getData()
+            names = config.other_screen.getData()
+            config.other_screen = None
             if names:
                 for name in names:
                     if name+".csv" in os.listdir(path=path("data")):
-                        os.remove(path("data", name+".csv"))
-                        if DataManager.keybindMap.get(name, None):
-                            del DataManager.keybindMap[name]
+                        try:
+                            os.remove(path("data", name+".csv"))
+                            if DataManager.keybindMap.get(name, None):
+                                del DataManager.keybindMap[name]
+                        except OSError:
+                            pass
+                        finally:
+                            toggleAbility()
                 self.refreshButton()
         else:
-            self.other_screen.focus()
+            config.other_screen.focus()
         
