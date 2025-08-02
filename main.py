@@ -5,9 +5,10 @@ import pickle
 import DataManager
 import Keyboard
 import sys
+from ButtonFunction import *
 # import Muse
 import EEGGraph
-from config import stopped
+import config
 
 class App(ctk.CTk):
     def __init__(self):
@@ -24,28 +25,23 @@ class App(ctk.CTk):
         keySelector = KeySelector(self)
         keySelector.grid(row=0, column=0, sticky="nsew", columnspan=2, padx=20, pady=10)
 
-        learning = ctk.CTkButton(master=self, text="학습", font=("맑은 고딕", 20))
-        learning.grid(row=1, column=0, padx=(20, 5), pady=5, sticky="nsew")
-
-        running = ctk.CTkButton(master=self, text="실행", font=("맑은 고딕", 20))
-        running.grid(row=1, column=1, padx=(5, 20), pady=5, sticky="nsew")
+        buttonGenerate(config.app, "학습", 0, record)
+        buttonGenerate(config.app, "실행", 1, run)
         
         graph = EEGGraph.EEGGraph(self)
         graph.grid(row=2, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
 
-        recording = ctk.CTkButton(master=self, text="기록", font=("맑은 고딕", 20))
-        recording.grid(row=3, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
+        buttonGenerate(config.app, "기록", 0, record, True)
 
     def onExit(self):
-        global stopped
         try:
         # with open(code_code_path("data","keybind.pickle"), "wb") as file:
         #     pickle.dump({}, file)
         # stopObserver(self)
-            stopped = True
+            config.stopped = True
             #TODO: Thread 종료시킬 것
             self.quit()
-            self.after_cancel(EEGGraph.afterID)
+            # self.after_cancel(EEGGraph.afterID)
             DataManager.keyBindWrite()
             
         except:
@@ -54,5 +50,5 @@ class App(ctk.CTk):
 ctk.set_default_color_theme("dark-blue")
 ctk.set_appearance_mode("Dark")
 
-app = Keyboard.app = App()
+app = config.app = App()
 app.mainloop()

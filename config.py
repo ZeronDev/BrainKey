@@ -7,3 +7,4 @@ def toggleAbility():
 stopped = False
 other_screen = None
 disabled = False
+app = None
