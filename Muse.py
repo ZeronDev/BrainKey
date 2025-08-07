@@ -23,7 +23,6 @@ lslSartEvent = threading.Event()
 pauseEvent = threading.Event()
 terminateEvent = threading.Event()
 isRecorded = False
-    # record(duration=60, filename=path("data",name))
 
 def streaming(): #MUSELSL 송신
     global muse, lslSartEvent
@@ -37,6 +36,7 @@ def streaming(): #MUSELSL 송신
     except Exception as e:
         print(f"[ERR] Muse Streaming Error Occurred \n{e}")
         print(e)
+
 
 def recordEEG():
     global EEG_DATA, terminateEvent, pauseEvent, BUFFER, isRecorded
@@ -60,7 +60,7 @@ def receiving():
             clearQueue(EEG_DATA)
         elif not pauseEvent.is_set():
             if EEG_DATA.full():
-                BUFFER.append(np.array(list(EEG_DATA.queue)).T.flatten())
+                BUFFER.append(np.array(list(EEG_DATA.queue)).T)
                 clearQueue(EEG_DATA)
             EEG_DATA.put(sample)
     # print(EEG_QUEUE.get())

@@ -6,14 +6,14 @@ import DataManager
 import Keyboard
 import sys
 from ButtonFunction import *
-# import Muse
+import Muse
 import EEGGraph
 import config
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-
+        
         self.geometry("600x800")
         self.wm_minsize(600, 800)
         self.title("브레인 키")
@@ -25,14 +25,14 @@ class App(ctk.CTk):
         keySelector = KeySelector(self)
         keySelector.grid(row=0, column=0, sticky="nsew", columnspan=2, padx=20, pady=10)
 
-        buttonGenerate(config.app, "학습", 0, record)
-        buttonGenerate(config.app, "실행", 1, run)
+        buttonGenerate(master=self, text="학습", row=1, index=0)
+        buttonGenerate(master=self, text="실행", row=1, index=1)
         
         graph = EEGGraph.EEGGraph(self)
         graph.grid(row=2, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
 
-        buttonGenerate(config.app, "기록", 0, record, True)
-
+        recordButton = buttonGenerate(master=self, text="기록", row=3, index=0, columnspan=2, full=True)
+        recordButton.configure(command=partial(record, recordButton))
     def onExit(self):
         try:
         # with open(code_code_path("data","keybind.pickle"), "wb") as file:

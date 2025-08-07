@@ -61,11 +61,11 @@ class KeySelector(ctk.CTkFrame):
             if name and name not in os.listdir(path=path("data")):
                 try:
                     open(path("data", name+".csv"), "w").close()
-                    self.refreshButton()
                 except OSError: #잘못된 파일 이름
                     pass
                 finally:
                     toggleAbility()
+                    self.refreshButton()
         else:
             config.other_screen.focus()
     def deleteButton(self, *_):
