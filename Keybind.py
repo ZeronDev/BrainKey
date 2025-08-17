@@ -1,7 +1,7 @@
 import customtkinter as ctk
 import os
 import config
-from DataManager import eegData, keybindMap, reload, keybindWidget
+import DataManager
 import uuid
 from PIL import Image
 import Keyboard
@@ -24,12 +24,12 @@ class KeybindSelector(ctk.CTkFrame):
         for keymap in sum(buttonList, []):
             if keymap.winfo_exists(): 
                 keymap.destroy()
-        eegData.clear()
-        eegData.extend(reload())
+        DataManager.eegData.clear()
+        DataManager.eegData.extend(DataManager.reload())
         
-        for i in eegData:
-            if i not in keybindMap.keys():
-                keybindMap[i] = []
+        for i in DataManager.eegData:
+            if i not in DataManager.keybindMap.keys():
+                DataManager.keybindMap[i] = []
 
         self.elements.clear()
         buttonList.clear()
@@ -37,12 +37,12 @@ class KeybindSelector(ctk.CTkFrame):
         
     def listElement(self):
         global buttonList
-        for index, file in enumerate(eegData):
+        for index, file in enumerate(DataManager.eegData):
             keylabel = ctk.CTkButton(master=self, text=file, font=("맑은 고딕", 20), width=130, fg_color="#292929", corner_radius=7, hover=False, anchor="center",)# border_width=0.5, border_color="#d4d4d4")
             keylabel.grid(row=index, column=0, pady=6, padx=(10, 4), sticky="w")
             columnCounter = 1
             _buttonList = []
-            for keymap in keybindMap.get(file, []):
+            for keymap in DataManager.keybindMap.get(file, []):
                 keymapButton = KeyButton(self, file, keymap)
                 keymapButton.bind("<Button-3>", command=(lambda _, file=file, keymapButton=keymapButton: self.keyRemove(file, keymapButton)))
                 keymapButton.grid(row=index, column=columnCounter, pady=6, padx=3)
@@ -59,17 +59,17 @@ class KeybindSelector(ctk.CTkFrame):
         print("[LOG: TEXT] "+str(buttonList[0][-1].key))
         print("[LOG: ID] "+str(keymapButton.id))
         print("[LOG: INDEX] "+str(keymapButton.getIndex()))
-        del (keybindMap[file])[keymapButton.getIndex()]
-        print("[LOG: KEYMAP] "+str(keybindMap))
+        del (DataManager.keybindMap[file])[keymapButton.getIndex()]
+        print("[LOG: KEYMAP] "+str(DataManager.keybindMap))
         self.refresh()
 
     def addButtonFunc(self, file):
         if config.disabled: return
-        keymaps = keybindMap.get(file, None)
+        keymaps = DataManager.keybindMap.get(file, None)
         if keymaps:
             keymaps.append(None)
         else:
-            keybindMap[file] = [None]
+            DataManager.keybindMap[file] = [None]
 
         self.refresh()
 

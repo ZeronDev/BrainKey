@@ -22,6 +22,11 @@ def keyBindRead():
     global keybindMap
     with open(path("keybind.json"), "r") as file:
         keybindMap = json.load(file)
+    for name in keybindMap:
+        if name not in eegData:
+            del keybindMap[name]
+
+            
 keyBindRead()
 # try:
 #     with open(path("data","keybind.pickle"), "rb") as file:

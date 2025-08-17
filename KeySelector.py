@@ -48,7 +48,7 @@ class KeySelector(ctk.CTkFrame):
         if config.disabled: return
         os.startfile(path("data"))
     def addButton(self, *_):
-        if not config.disabled and (config.other_screen == None or not config.other_screen.winfo_exists()):
+        if not config.disabled and config.other_screen == None:
             toggleAbility()
             config.other_screen = CustomInputDialog("데이터 파일 생성")
             config.other_screen.focus()
@@ -70,7 +70,7 @@ class KeySelector(ctk.CTkFrame):
             config.other_screen.focus()
     def deleteButton(self, *_):
             
-        if not config.disabled and (config.other_screen == None or not config.other_screen.winfo_exists()):
+        if not config.disabled and config.other_screen == None:
             toggleAbility()
             config.other_screen = DeleteInputDialog("데이터 파일 삭제")
             config.other_screen.focus()

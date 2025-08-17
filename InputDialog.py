@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from functools import partial
-from DataManager import eegData
+import DataManager
 from config import path
 
 class CustomInputDialog(ctk.CTkToplevel):
@@ -45,7 +45,7 @@ class DeleteInputDialog(CustomInputDialog):
         self.entry = ctk.CTkScrollableFrame(master=self, corner_radius=7)
         self.entry.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=20, pady=(10, 15))
         self.varList = []
-        for element in eegData:
+        for element in DataManager.eegData:
             var = ctk.StringVar(value="")
             self.varList.append(var)
             checkbox = ctk.CTkCheckBox(master=self.entry, text=element, variable=var, onvalue=element, offvalue="")
@@ -67,8 +67,8 @@ class SelectInputDialog(CustomInputDialog):
         self.geometry("380x300")
         self.entry = ctk.CTkScrollableFrame(master=self, corner_radius=7)
         self.entry.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=20, pady=(10, 15))
-        self.var = ctk.StringVar("")
-        for element in eegData:
+        self.var = ctk.StringVar(value="")
+        for element in DataManager.eegData:
             radio = ctk.CTkRadioButton(master=self.entry, text=element, variable=self.var, value=element)
             radio.pack(side="top", anchor="w", padx=7, pady=5)
         super().buttons()

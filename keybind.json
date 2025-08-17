@@ -1,13 +1,14 @@
 {
-    "asdf": [
-        "Z",
-        "C",
-        "SPACE"
+    "back": [
+        "B"
     ],
-    "close": [
-        "N",
-        "S",
-        "F",
-        "D"
+    "front": [
+        "F"
+    ],
+    "left": [
+        "L"
+    ],
+    "right": [
+        "R"
     ]
 }

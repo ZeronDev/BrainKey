@@ -1,10 +1,7 @@
 import customtkinter as ctk
 from KeySelector import KeySelector
 from functools import partial
-import pickle
 import DataManager
-import Keyboard
-import sys
 from ButtonFunction import *
 import Muse
 import EEGGraph
@@ -17,21 +14,25 @@ class App(ctk.CTk):
         self.geometry("600x800")
         self.wm_minsize(600, 800)
         self.title("브레인 키")
-        self.grid_rowconfigure((0,2), weight=15)
-        self.grid_rowconfigure((1,3), weight=1)
+        self.grid_rowconfigure((0,3), weight=15)
+        self.grid_rowconfigure((1,2,4), weight=1)
         self.grid_columnconfigure((0,1), weight=1)
         self.protocol("WM_DELETE_WINDOW", self.onExit)
         
         keySelector = KeySelector(self)
         keySelector.grid(row=0, column=0, sticky="nsew", columnspan=2, padx=20, pady=10)
 
-        buttonGenerate(master=self, text="학습", row=1, index=0)
-        buttonGenerate(master=self, text="실행", row=1, index=1)
+        learnButton = buttonGenerate(master=self, text="학습", row=1, index=0)
+        learnButton.configure(command=learn)
+        runButton = buttonGenerate(master=self, text="실행", row=1, index=1)
+        runButton.configure(command=partial(run, (learnButton, runButton)))
         
         graph = EEGGraph.EEGGraph(self)
-        graph.grid(row=2, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
+        graph.grid(row=3, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
 
-        recordButton = buttonGenerate(master=self, text="기록", row=3, index=0, columnspan=2, full=True)
+        self.progress = ctk.CTkProgressBar(master=self, width=500)
+
+        recordButton = buttonGenerate(master=self, text="기록", row=4, index=0, columnspan=2, full=True)
         recordButton.configure(command=partial(record, recordButton))
     def onExit(self):
         try:

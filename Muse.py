@@ -11,7 +11,7 @@ import numpy as np
 from InputDialog import SelectInputDialog
 
 EEG_QUEUE = Queue(800) #큐
-EEG_DATA = Queue(256)
+# EEG_DATA = Queue(256)
 BUFFER = []
 
 def clearQueue(queue: Queue):
@@ -29,18 +29,19 @@ def streaming(): #MUSELSL 송신
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    muse = list_muses()[0]
+    
     try:
+        muse = list_muses()[0]
         lslSartEvent.set()
         stream(muse['address'])
     except Exception as e:
-        print(f"[ERR] Muse Streaming Error Occurred \n{e}")
-        print(e)
+        print("MUSE 연결 안됨")
+        # print(f"[ERR] Muse Streaming Error Occurred \n{e}")
+        # print(e)
 
 
 def recordEEG():
-    global EEG_DATA, terminateEvent, pauseEvent, BUFFER, isRecorded
-    clearQueue(EEG_DATA)
+    global terminateEvent, pauseEvent, BUFFER, isRecorded
     clearQueue(EEG_QUEUE)
     isRecorded = True
     
@@ -53,16 +54,11 @@ def receiving():
     sample, timestamp = inlet.pull_sample(1.5)
     if EEG_QUEUE.full():
         EEG_QUEUE.get()
-    EEG_QUEUE.put(sample)
+    if not (pauseEvent.is_set() or terminateEvent.is_set()):
+        EEG_QUEUE.put(sample)
 
-    if isRecorded:
-        if terminateEvent.is_set():
-            clearQueue(EEG_DATA)
-        elif not pauseEvent.is_set():
-            if EEG_DATA.full():
-                BUFFER.append(np.array(list(EEG_DATA.queue)).T)
-                clearQueue(EEG_DATA)
-            EEG_DATA.put(sample)
+    if isRecorded and not pauseEvent.is_set() and not terminateEvent.is_set():
+        BUFFER.append([ float(data) for data in sample ])
     # print(EEG_QUEUE.get())
 
 def pylslrecv(): #PYLSL 수신
