@@ -102,12 +102,12 @@ def terminate():
     config.other_screen.grab_set()
     config.other_screen.wait_window()
 
-    fileName = config.other_screen.getData().get()
     try:
+        fileName = config.other_screen.getData().get()
         with open(config.path("data", fileName+".csv"), "w", newline='') as file:
             writer = csv.writer(file)
             writer.writerows(Muse.BUFFER)
-    except Exception as e: print("[terminate] 이미 파일이 열려있음\n" + str(e))
+    except Exception as e: print("[terminate] 이미 파일이 열려있거나 예기치 못한 오류\n" + str(e))
     finally:
         Muse.BUFFER = []
         config.other_screen = None

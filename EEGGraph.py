@@ -32,14 +32,15 @@ class EEGGraph(ctk.CTkFrame):
         self.canvas.get_tk_widget().pack(fill="both",expand=True)
 
     def updateCanvas(self):
-        lock = threading.Lock()
-        if not EEG_QUEUE.empty():
-            for i in range(4):
-                with lock:
-                    data = list(map(lambda x: x[i], list(EEG_QUEUE.queue)))
-                    self.lines[i].set_data(range(1,len(data)+1), data)
-        self.canvas.draw()
-        if not config.stopped and self.master.winfo_exists():
-            # print(stopped)
-            self.master.after(100, self.updateCanvas)
-            # print(afterID)
+        try:
+            lock = threading.Lock()
+            if not EEG_QUEUE.empty():
+                for i in range(4):
+                    with lock:
+                        data = list(map(lambda x: x[i], list(EEG_QUEUE.queue)))
+                        self.lines[i].set_data(range(1,len(data)+1), data)
+        finally:
+            self.canvas.draw()
+            if not config.stopped and self.master.winfo_exists():
+                # print(stopped)
+                self.master.after(100, self.updateCanvas)

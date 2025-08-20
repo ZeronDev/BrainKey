@@ -9,6 +9,8 @@ import os
 import DataManager
 from AiFilter import filterEEG
 
+tf.config.run_functions_eagerly(True)
+
 def build_eegnet(nb_classes, Chans, Samples, dropoutRate=0.3):
     input1 = layers.Input(shape=(Chans, Samples, 1))
 
@@ -42,7 +44,7 @@ if os.path.exists(path("models", "EEGNet.h5")):
 else:
     nb_classes = 4
     model = build_eegnet(nb_classes, Chans=5, Samples=256)
-    model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='sparse_categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'], run_eagerly=True)
 
 Chans = 8
 Samples = 256

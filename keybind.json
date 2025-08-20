@@ -1,14 +1,14 @@
 {
     "back": [
-        "B"
+        "DOWN"
     ],
     "front": [
-        "F"
+        "UP"
     ],
     "left": [
-        "L"
+        "LEFT"
     ],
     "right": [
-        "R"
+        "RIGHT"
     ]
 }
