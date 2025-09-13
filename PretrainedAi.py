@@ -1,58 +1,43 @@
-import numpy as np
-import tensorflow as tf
 from tensorflow.keras import layers, models # type: ignore
 from tensorflow.keras.constraints import max_norm # type: ignore
 from tensorflow.keras.callbacks import Callback # type: ignore
+import tensorflow as tf
 import config
 from config import path
 import os
 import DataManager
 from AiFilter import filterEEG
+import numpy as np
 
-tf.config.run_functions_eagerly(True)
+def build_eegnet(nb_classes):
+    pretrained = models.load_model("EEGNetv4_pretrained.h5") 
+    inputs = layers.Input(shape=(4, 128, 1)) #128 = 256Hz / 2
+    x = layers.Conv2D(filters=8, kernel_size=(64, 1), padding='same', use_bias=False)(inputs)
+    for layer in pretrained.layers[1:]:
+        x = layer(x)
 
-def build_eegnet(nb_classes, Chans, Samples, dropoutRate=0.3):
-    input1 = layers.Input(shape=(Chans, Samples, 1))
+    outputs = layers.Dense(nb_classes, activation='softmax')(x)
+    finetune_model = models.Model(inputs=inputs, outputs=outputs)
+    for layer in finetune_model.layers[:-2]:
+        layer.trainable = False
+    return finetune_model
 
-    # Block 1
-    x = layers.Conv2D(8, (1, 64), padding='same', use_bias=False)(input1)
-    x = layers.BatchNormalization()(x)
-    x = layers.DepthwiseConv2D((Chans, 1), use_bias=False, depth_multiplier=2,depthwise_constraint=max_norm(1.))(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('elu')(x)
-    x = layers.AveragePooling2D((1, 4))(x)
-    x = layers.Dropout(dropoutRate)(x)
-
-    # Block 2
-    x = layers.SeparableConv2D(16, (1, 16), use_bias=False, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('elu')(x)
-    x = layers.AveragePooling2D((1, 8))(x)
-    x = layers.Dropout(dropoutRate)(x)
-
-    # Classifier
-    x = layers.Flatten()(x)
-    x = layers.Dense(nb_classes, kernel_constraint=max_norm(0.25))(x)
-    out = layers.Activation('softmax')(x)
-
-    return models.Model(inputs=input1, outputs=out)
-
-model = None
 
 if os.path.exists(path("models", "EEGNet.h5")):
     model = models.load_model(path("models", "EEGNet.h5"))
 else:
-    nb_classes = 4
-    model = build_eegnet(nb_classes, Chans=4, Samples=256)
-    model.compile(loss='sparse_categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'], run_eagerly=True)
-
+    nb_classes = len(DataManager.eegData)
+    model = build_eegnet(nb_classes)
+    model.compile(loss='sparse_categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(1e-4), metrics=['accuracy'], run_eagerly=True)
+    
 Chans = 4
 Samples = 256
 stride = 128
 batch_size = 16
+epochs = 50
 
 def train():
-    global model
+    global model, Chans, Samples, stride, batch_size, epochs
     
     X_list, y_list = [], []
 
@@ -69,7 +54,7 @@ def train():
             y_list.append(class_id)
     X_train = np.stack(X_list)  # (총 trial 수, Chans, Samples, 1)
     y_train = np.array(y_list)  # (총 trial 수,
-    model.fit(X_train, y_train, batch_size=16, epochs=50, shuffle=True, callbacks=[CTkProgressBarCallback()])
+    model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, shuffle=True, callbacks=[CTkProgressBarCallback()])
     model.save(path("models", "EEGNet.h5"))
 
 class CTkProgressBarCallback(Callback):

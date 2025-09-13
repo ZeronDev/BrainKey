@@ -10,11 +10,6 @@ import csv
 import DataManager
 from Keyboard import pressKey
 
-def buttonGenerate(master, text, row, index, columnspan=1, full=False) -> ctk.CTkButton:
-    button = ctk.CTkButton(master=master, text=text, font=("맑은 고딕", 20))
-    button.grid(row=row, column=index, padx=20, pady=10, sticky="nsew" if full else "ew", columnspan=columnspan)
-    return button
-
 def learn(): 
     if not config.disabled:
         config.toggleAbility()
@@ -54,19 +49,18 @@ def run(buttons):
         buttons[0].destroy()
         buttons[1].destroy()
 
-        buttonGenerate(master=config.app, text="종료", row=1, index=0, columnspan=2)
+        config.buttonGenerate(master=config.app, text="종료", row=1, index=0, columnspan=2)
 
 def stopRunning(button):
     global isRunning
     isRunning = False
     button.destroy()
 
-    learnButton = buttonGenerate(master=config.app, text="학습", row=1, index=0)
+    learnButton = config.buttonGenerate(master=config.app, text="학습", row=1, index=0)
     learnButton.configure(command=learn)
-    runButton = buttonGenerate(master=config.app, text="실행", row=1, index=1)
+    runButton = config.buttonGenerate(master=config.app, text="실행", row=1, index=1)
     runButton.configure(command=partial(run, (learnButton, runButton)))
 
-buttons = []
 
 def record(button):
     button.destroy()
@@ -74,12 +68,9 @@ def record(button):
         config.toggleAbility()
         recordingThread = threading.Thread(target=Muse.recordEEG, daemon=True)
         recordingThread.start()
-        pauseButton = buttonGenerate(master=config.app, text="일시중지", row=4, index=0)
+        pauseButton = config.buttonGenerate(master=config.app, text="일시중지", row=4, index=0)
         pauseButton.configure(command=lambda: pause(pauseButton))
-        terminateButton = buttonGenerate(master=config.app, text="종료", row=4, index=1)
-        terminateButton.configure(command=terminate)
-        buttons.append(pauseButton)
-        buttons.append(terminateButton)
+        config.pauseButton = pauseButton
     else:
         config.other_screen.focus()
 def pause(button): 
@@ -91,30 +82,3 @@ def pause(button):
     else:
         button.configure(text="재개")
         Muse.pauseEvent.set()#PAUSE event set할 것
-def terminate(): 
-    if config.other_screen != None:
-        return
-    Muse.terminateEvent.set() #Terminate Event set할 것
-    Muse.pauseEvent.clear()
-
-    config.other_screen = SelectInputDialog("저장할 파일 선택")
-    config.other_screen.focus()
-    config.other_screen.grab_set()
-    config.other_screen.wait_window()
-
-    try:
-        fileName = config.other_screen.getData().get()
-        with open(config.path("data", fileName+".csv"), "w", newline='') as file:
-            writer = csv.writer(file)
-            writer.writerows(Muse.BUFFER)
-    except Exception as e: print("[terminate] 이미 파일이 열려있거나 예기치 못한 오류\n" + str(e))
-    finally:
-        Muse.BUFFER = []
-        config.other_screen = None
-        Muse.terminateEvent.clear()
-        for element in buttons:
-            element.destroy()
-        recordButton = buttonGenerate(master=config.app, text="기록", row=4, index=0, columnspan=2, full=True)
-        recordButton.configure(command=partial(record, recordButton))
-        config.toggleAbility()
-    

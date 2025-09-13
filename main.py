@@ -22,9 +22,9 @@ class App(ctk.CTk):
         keySelector = KeySelector(self)
         keySelector.grid(row=0, column=0, sticky="nsew", columnspan=2, padx=20, pady=10)
 
-        learnButton = buttonGenerate(master=self, text="학습", row=1, index=0)
+        learnButton = config.buttonGenerate(master=self, text="학습", row=1, index=0)
         learnButton.configure(command=learn)
-        runButton = buttonGenerate(master=self, text="실행", row=1, index=1)
+        runButton = config.buttonGenerate(master=self, text="실행", row=1, index=1)
         runButton.configure(command=partial(run, (learnButton, runButton)))
         
         graph = EEGGraph.EEGGraph(self)
@@ -32,7 +32,7 @@ class App(ctk.CTk):
 
         self.progress = ctk.CTkProgressBar(master=self, width=500)
 
-        recordButton = buttonGenerate(master=self, text="기록", row=4, index=0, columnspan=2, full=True)
+        recordButton = config.buttonGenerate(master=self, text="기록", row=4, index=0, columnspan=2, full=True)
         recordButton.configure(command=partial(record, recordButton))
     def onExit(self):
         try:

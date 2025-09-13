@@ -1,3 +1,4 @@
+from functools import partial
 from muselsl import stream, list_muses, record
 from pylsl import StreamInlet, resolve_streams
 import threading
@@ -18,10 +19,34 @@ def clearQueue(queue: Queue):
     while not queue.empty():
         queue.get()
 
+def terminate():
+    global pauseEvent, BUFFER
+    if config.other_screen != None:
+        return
+    pauseEvent.clear()
+
+    config.other_screen = SelectInputDialog("저장할 파일 선택")
+    config.other_screen.focus()
+    config.other_screen.grab_set()
+    config.other_screen.wait_window()
+
+    try:
+        fileName = config.other_screen.getData().get()
+        with open(config.path("data", fileName+".csv"), "w", newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(BUFFER)
+    except Exception as e: print("[terminate] 이미 파일이 열려있거나 예기치 못한 오류\n" + str(e))
+    finally:
+        BUFFER = []
+        config.other_screen = None
+        config.pauseButton.destroy()
+        recordButton = config.buttonGenerate(master=config.app, text="기록", row=4, index=0, columnspan=2, full=True)
+        recordButton.configure(command=partial(record, recordButton))
+        config.toggleAbility()
+
 muse = None
 lslSartEvent = threading.Event()
 pauseEvent = threading.Event()
-terminateEvent = threading.Event()
 isRecorded = False
 
 def streaming(): #MUSELSL 송신
@@ -29,7 +54,6 @@ def streaming(): #MUSELSL 송신
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    
     try:
         muse = list_muses()[0]
         lslSartEvent.set()
@@ -44,20 +68,20 @@ def recordEEG():
     global terminateEvent, pauseEvent, BUFFER, isRecorded
     clearQueue(EEG_QUEUE)
     isRecorded = True
-    
-    terminateEvent.wait()
+    progressBar = config.TimerProgressBar(terminate, 30)
+    progressBar.start()
     isRecorded = False
 
 inlet = None
 def receiving():
-    global inlet, pauseEvent, terminateEvent, isRecorded
+    global inlet, pauseEvent,isRecorded
     sample, timestamp = inlet.pull_sample(1.5)
     if EEG_QUEUE.full():
         EEG_QUEUE.get()
-    if not (pauseEvent.is_set() or terminateEvent.is_set()):
+    if isRecorded and not pauseEvent.is_set():
         EEG_QUEUE.put(sample)
 
-    if isRecorded and not pauseEvent.is_set() and not terminateEvent.is_set():
+    if isRecorded and not pauseEvent.is_set():
         BUFFER.append([ float(data) for data in sample ])
     # print(EEG_QUEUE.get())
 
