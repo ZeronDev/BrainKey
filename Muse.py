@@ -1,5 +1,5 @@
 from functools import partial
-from muselsl import stream, list_muses, record
+from muselsl import stream, list_muses
 from pylsl import StreamInlet, resolve_streams
 import threading
 from config import path
@@ -10,6 +10,12 @@ import csv
 from queue import Queue
 import numpy as np
 from InputDialog import SelectInputDialog
+import DataManager
+import AiFilter
+import torch.nn.functional as F
+import torch
+from Keyboard import pressKey
+import PytorchAi
 
 EEG_QUEUE = Queue(800) #큐
 # EEG_DATA = Queue(256)
@@ -19,11 +25,109 @@ def clearQueue(queue: Queue):
     while not queue.empty():
         queue.get()
 
+def learn(): 
+    if not config.disabled:
+        config.toggleAbility()
+        PytorchAi.pytorchLearn()
+        config.toggleAbility()
+        config.app.progress.grid_forget()
+
+isRunning = False
+
+def record(button):
+    button.destroy()
+    if not config.disabled and config.other_screen == None:
+        config.toggleAbility()
+        recordingThread = threading.Thread(target=recordEEG, daemon=True)
+        recordingThread.start()
+        pauseButton = config.buttonGenerate(master=config.app, text="일시중지", row=4, index=0, columnspan=2)
+        pauseButton.configure(command=lambda: pause(pauseButton))
+        config.pauseButton = pauseButton
+    else:
+        config.other_screen.focus()
+
+
+def prediction():
+    global isRunning
+    threshold = 0.6  # 확률 기준
+    lock = threading.Lock()
+    
+    while isRunning:
+        # UI 초기화
+        for x in DataManager.keybindWidget.elements:
+            x[0].configure(fg_color="#292929")
+        
+        # 마지막 256 샘플 추출
+        with lock:
+            window = np.array(list(EEG_QUEUE.queue)[-256:])  # (Samples, Chans)
+        
+        filtered_window = np.zeros_like(window)
+        for ch in range(window.shape[1]):
+            filtered_window[:, ch] = AiFilter.filterEEG(window[:, ch])
+
+        # 입력 차원 맞추기: (batch, 1, Chans, Samples)
+        X_tensor = torch.tensor(filtered_window.T[np.newaxis, np.newaxis, :, :], dtype=torch.float32).to(PytorchAi.device)
+        
+        # 모델 예측
+        PytorchAi.model.eval()
+        with torch.no_grad():
+            logits = PytorchAi.model(X_tensor)                # (1, n_classes)
+            probs = F.softmax(logits, dim=1).cpu().numpy()    # 확률로 변환
+
+        # 확률 기준 선택
+        max_prob = np.max(probs)
+        if max_prob > threshold:
+            pred_class = np.argmax(probs)
+            DataManager.keybindWidget.elements[pred_class][0].configure(fg_color="#206AA4")
+            pressKey(pred_class)
+
+    
+
+def run(buttons): 
+    global isRunning
+    if not config.disabled:
+        isRunning = True
+        config.toggleAbility()
+        runningThread = threading.Thread(target=prediction, daemon=True)
+        runningThread.start()
+
+        buttons[0].destroy()
+        buttons[1].destroy()
+
+        config.buttonGenerate(master=config.app, text="종료", row=1, index=0, columnspan=2)
+
+def stopRunning(button):
+    global isRunning
+    isRunning = False
+    button.destroy()
+
+    learnButton = config.buttonGenerate(master=config.app, text="학습", row=1, index=0)
+    learnButton.configure(command=learn)
+    runButton = config.buttonGenerate(master=config.app, text="실행", row=1, index=1)
+    runButton.configure(command=partial(run, (learnButton, runButton)))
+
+
+
+def pause(button): 
+    global progressBar
+    if not isRecorded:
+        return
+    if pauseEvent.is_set():
+        button.configure(text="일시중지")
+        progressBar.resume()
+        pauseEvent.clear()
+    else:
+        button.configure(text="재개")
+        progressBar.pause()
+        pauseEvent.set()#PAUSE event set할 것
+
+
 def terminate():
     global pauseEvent, BUFFER
     if config.other_screen != None:
         return
     pauseEvent.clear()
+    isRecorded = False
 
     config.other_screen = SelectInputDialog("저장할 파일 선택")
     config.other_screen.focus()
@@ -43,7 +147,6 @@ def terminate():
         recordButton = config.buttonGenerate(master=config.app, text="기록", row=4, index=0, columnspan=2, full=True)
         recordButton.configure(command=partial(record, recordButton))
         config.toggleAbility()
-
 muse = None
 lslSartEvent = threading.Event()
 pauseEvent = threading.Event()
@@ -63,14 +166,15 @@ def streaming(): #MUSELSL 송신
         # print(f"[ERR] Muse Streaming Error Occurred \n{e}")
         # print(e)
 
+progressBar = None
 
 def recordEEG():
+    global progressBar
     global terminateEvent, pauseEvent, BUFFER, isRecorded
     clearQueue(EEG_QUEUE)
     isRecorded = True
     progressBar = config.TimerProgressBar(terminate, 30)
     progressBar.start()
-    isRecorded = False
 
 inlet = None
 def receiving():
@@ -78,11 +182,11 @@ def receiving():
     sample, timestamp = inlet.pull_sample(1.5)
     if EEG_QUEUE.full():
         EEG_QUEUE.get()
-    if isRecorded and not pauseEvent.is_set():
+    if (not isRecorded or (isRecorded and not pauseEvent.is_set())) and sample:
         EEG_QUEUE.put(sample)
 
     if isRecorded and not pauseEvent.is_set():
-        BUFFER.append([ float(data) for data in sample ])
+        BUFFER.append([ float(data) for data in sample[:-1] ])
     # print(EEG_QUEUE.get())
 
 def pylslrecv(): #PYLSL 수신

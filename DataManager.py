@@ -4,6 +4,7 @@ import os
 from config import path
 import pickle
 import json
+from copy import deepcopy
 # import watchdog.observers
 
 def reload(): return list(map(lambda fileName: os.path.splitext(fileName)[0],os.listdir(path("data"))))
@@ -22,7 +23,7 @@ def keyBindRead():
     global keybindMap
     with open(path("keybind.json"), "r") as file:
         keybindMap = json.load(file)
-    for name in keybindMap:
+    for name in deepcopy(keybindMap):
         if name not in eegData:
             del keybindMap[name]
 

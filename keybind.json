@@ -1,14 +1,14 @@
 {
-    "back": [
-        "DOWN"
-    ],
-    "front": [
-        "UP"
-    ],
     "left": [
         "LEFT"
     ],
     "right": [
         "RIGHT"
+    ],
+    "leg": [
+        "UP"
+    ],
+    "tongue": [
+        "DOWN"
     ]
 }

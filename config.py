@@ -78,6 +78,7 @@ class LearningProgressBar:
 
         self.progressbar.grid(row=2, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
         self.progressbar.master.update_idletasks()
+        self.progressbar.set(0.0)
         self.update()
 
     def update(self):

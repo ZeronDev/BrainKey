@@ -8,6 +8,7 @@ from braindecode.models import EEGNet
 from AiFilter import filterEEG
 import DataManager
 from config import LearningProgressBar, path
+import pickle
 
 Chans = 4
 Samples = 256     # sliding window
@@ -27,6 +28,16 @@ def build_eegnet():
         n_times=Samples,
         final_conv_length='auto'
     ).to(device)
+
+    params_path = path("pretrained_models", "params.pt")
+    pretrained_state = torch.load(params_path, map_location=device)
+    for name, param in pretrained_state.items():
+        print(name, param.shape)
+    model_state = model.state_dict()
+    for k in model_state.keys():
+        if k in pretrained_state and "final_layer.conv_classifier" not in k:  # fc: classifier layer
+            model_state[k] = pretrained_state[k]
+    model.load_state_dict(model_state)
 
     for idx, param in enumerate(model.parameters()):
         if idx < freeze_until_layer:
