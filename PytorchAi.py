@@ -8,13 +8,13 @@ from braindecode.models import EEGNet
 from AiFilter import filterEEG
 import DataManager
 from config import LearningProgressBar, path
-import pickle
+import threading
 
 Chans = 4
 Samples = 256     # sliding window
 stride = 128
 batch_size = 16        
-epochs = 50
+epochs = 150
 learning_rate = 1e-4
 n_classes = len(DataManager.eegData)
 freeze_until_layer = 4  # 앞쪽 레이어 freeze
@@ -55,8 +55,9 @@ optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr
 
 def pytorchLearn():
     global model, optimizer, criterion
+    model = build_eegnet()
     loader = preprocessing()
-    train(model, loader, optimizer, criterion)
+    threading.Thread(target=lambda model=model, loader=loader, optimizer=optimizer, criterion=criterion: train(model, loader, optimizer, criterion), daemon=True).start()
 
 def preprocessing():
     X_list, y_list = [], []
@@ -71,12 +72,19 @@ def preprocessing():
         # sliding window
         for start in range(0, data.shape[0] - Samples + 1, stride):
             window = filtered_data[start:start+Samples].T  # (Chans, Samples)
+            window = (window - window.mean(axis=1, keepdims=True)) / (window.std(axis=1, keepdims=True) + 1e-6)
             X_list.append(window)
             y_list.append(class_id)
 
     X = np.stack(X_list)                  # (num_windows, Chans, Samples)
-    X = X[:, np.newaxis, :, :]            # add channel dim → (num_windows, 1, Chans, Samples)
+    # X = X[:, np.newaxis, :, :]            # add channel dim → (num_windows, 1, Chans, Samples)
     y = np.array(y_list)
+    indices = np.arange(len(y))
+    np.random.shuffle(indices)
+    X = X[indices]
+    y = y[indices]
+    
+    print(y)
 
     X_tensor = torch.tensor(X, dtype=torch.float32)
     y_tensor = torch.tensor(y, dtype=torch.long)
@@ -114,3 +122,6 @@ def train(model, loader, optimizer, criterion):
         
     os.makedirs("models", exist_ok=True)
     torch.save(model.state_dict(), "models/EEGNetv4.pth")
+
+if __name__ == "__main__":
+    pytorchLearn()

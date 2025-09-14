@@ -43,13 +43,11 @@ def record(button):
         pauseButton = config.buttonGenerate(master=config.app, text="일시중지", row=4, index=0, columnspan=2)
         pauseButton.configure(command=lambda: pause(pauseButton))
         config.pauseButton = pauseButton
-    else:
-        config.other_screen.focus()
 
 
 def prediction():
     global isRunning
-    threshold = 0.6  # 확률 기준
+    threshold = 0.5  # 확률 기준
     lock = threading.Lock()
     
     while isRunning:
@@ -59,27 +57,29 @@ def prediction():
         
         # 마지막 256 샘플 추출
         with lock:
-            window = np.array(list(EEG_QUEUE.queue)[-256:])  # (Samples, Chans)
+            if len(list(EEG_QUEUE.queue)) >= 256:
+                window = np.array(list(EEG_QUEUE.queue)[-256:])  # (Samples, Chans)
         
-        filtered_window = np.zeros_like(window)
-        for ch in range(window.shape[1]):
-            filtered_window[:, ch] = AiFilter.filterEEG(window[:, ch])
+                filtered_window = np.zeros_like(window)
+                for ch in range(window.shape[1]):
+                    filtered_window[:, ch] = AiFilter.filterEEG(window[:, ch])
 
-        # 입력 차원 맞추기: (batch, 1, Chans, Samples)
-        X_tensor = torch.tensor(filtered_window.T[np.newaxis, np.newaxis, :, :], dtype=torch.float32).to(PytorchAi.device)
-        
-        # 모델 예측
-        PytorchAi.model.eval()
-        with torch.no_grad():
-            logits = PytorchAi.model(X_tensor)                # (1, n_classes)
-            probs = F.softmax(logits, dim=1).cpu().numpy()    # 확률로 변환
+                # 입력 차원 맞추기: (batch, 1, Chans, Samples)
+                X_tensor = torch.tensor(filtered_window.T[np.newaxis, :, :], dtype=torch.float32).to(PytorchAi.device)
+                
+                # 모델 예측
+                PytorchAi.model.eval()
+                with torch.no_grad():
+                    logits = PytorchAi.model(X_tensor)                # (1, n_classes)
+                    probs = F.softmax(logits, dim=1).cpu().numpy()    # 확률로 변환
 
-        # 확률 기준 선택
-        max_prob = np.max(probs)
-        if max_prob > threshold:
-            pred_class = np.argmax(probs)
-            DataManager.keybindWidget.elements[pred_class][0].configure(fg_color="#206AA4")
-            pressKey(pred_class)
+                # 확률 기준 선택
+                max_prob = np.max(probs)
+                if max_prob > threshold:
+                    pred_class = np.argmax(probs)
+                    print(probs)
+                    DataManager.keybindWidget.elements[pred_class][0].configure(fg_color="#206AA4")
+                    pressKey(pred_class)
 
     
 
@@ -94,7 +94,9 @@ def run(buttons):
         buttons[0].destroy()
         buttons[1].destroy()
 
-        config.buttonGenerate(master=config.app, text="종료", row=1, index=0, columnspan=2)
+        stopButton = config.buttonGenerate(master=config.app, text="종료", row=1, index=0, columnspan=2)
+        stopButton.configure(command=partial(stopRunning, stopButton))
+
 
 def stopRunning(button):
     global isRunning
@@ -105,6 +107,11 @@ def stopRunning(button):
     learnButton.configure(command=learn)
     runButton = config.buttonGenerate(master=config.app, text="실행", row=1, index=1)
     runButton.configure(command=partial(run, (learnButton, runButton)))
+    
+    for x in DataManager.keybindWidget.elements:
+        x[0].configure(fg_color="#292929")
+
+    config.toggleAbility()
 
 
 
@@ -123,11 +130,10 @@ def pause(button):
 
 
 def terminate():
-    global pauseEvent, BUFFER
-    if config.other_screen != None:
-        return
-    pauseEvent.clear()
+    global pauseEvent, BUFFER, isRecorded
     isRecorded = False
+    pauseEvent.clear()
+    
 
     config.other_screen = SelectInputDialog("저장할 파일 선택")
     config.other_screen.focus()
@@ -138,7 +144,7 @@ def terminate():
         fileName = config.other_screen.getData().get()
         with open(config.path("data", fileName+".csv"), "w", newline='') as file:
             writer = csv.writer(file)
-            writer.writerows(BUFFER)
+            writer.writerows(BUFFER[:256*30])
     except Exception as e: print("[terminate] 이미 파일이 열려있거나 예기치 못한 오류\n" + str(e))
     finally:
         BUFFER = []
@@ -147,6 +153,7 @@ def terminate():
         recordButton = config.buttonGenerate(master=config.app, text="기록", row=4, index=0, columnspan=2, full=True)
         recordButton.configure(command=partial(record, recordButton))
         config.toggleAbility()
+
 muse = None
 lslSartEvent = threading.Event()
 pauseEvent = threading.Event()
@@ -183,7 +190,7 @@ def receiving():
     if EEG_QUEUE.full():
         EEG_QUEUE.get()
     if (not isRecorded or (isRecorded and not pauseEvent.is_set())) and sample:
-        EEG_QUEUE.put(sample)
+        EEG_QUEUE.put(sample[:-1])
 
     if isRecorded and not pauseEvent.is_set():
         BUFFER.append([ float(data) for data in sample[:-1] ])

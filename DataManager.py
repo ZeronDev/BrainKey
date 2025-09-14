@@ -26,6 +26,9 @@ def keyBindRead():
     for name in deepcopy(keybindMap):
         if name not in eegData:
             del keybindMap[name]
+    for i in eegData:
+        if i not in keybindMap.keys():
+            keybindMap[i] = []
 
             
 keyBindRead()

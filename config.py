@@ -31,11 +31,13 @@ class TimerProgressBar:
         self.terminate = terminate
 
         self.progressbar = app.progress
+        
 
     def start(self):
         self.start_time = time.time()
         self.progressbar.grid(row=2, column=0, padx=20, pady=10, sticky="nsew", columnspan=2)
         self.progressbar.master.update_idletasks()
+        self.progressbar.set(0.0)
         self.update()
 
     def update(self):
@@ -84,7 +86,6 @@ class LearningProgressBar:
     def update(self):
         self.counter += 1
         self.progressbar.set(self.counter/self.epochs)
-        self.update()
 
         if self.counter == self.epochs:
             self.end()

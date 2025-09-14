@@ -57,17 +57,13 @@ class KeySelector(ctk.CTkFrame):
 
             name = config.other_screen.getData()
             config.other_screen = None
-
+            toggleAbility()
             if name and name not in os.listdir(path=path("data")):
                 try:
                     open(path("data", name+".csv"), "w").close()
                 except OSError: #잘못된 파일 이름
                     pass
-                finally:
-                    toggleAbility()
-                    self.refreshButton()
-        else:
-            config.other_screen.focus()
+            self.refreshButton()
     def deleteButton(self, *_):
             
         if not config.disabled and config.other_screen == None:
@@ -79,6 +75,7 @@ class KeySelector(ctk.CTkFrame):
 
             names = config.other_screen.getData()
             config.other_screen = None
+            toggleAbility()
             if names:
                 for name in names:
                     if name+".csv" in os.listdir(path=path("data")):
@@ -88,9 +85,4 @@ class KeySelector(ctk.CTkFrame):
                                 del DataManager.keybindMap[name]
                         except OSError:
                             pass
-                        finally:
-                            toggleAbility()
-                self.refreshButton()
-        else:
-            config.other_screen.focus()
-        
+            self.refreshButton()
