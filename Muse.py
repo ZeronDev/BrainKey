@@ -16,6 +16,9 @@ import torch.nn.functional as F
 import torch
 from Keyboard import pressKey
 import PytorchAi
+import os
+from pyriemann.estimation import Covariances
+import MachinLearning as ml
 
 EEG_QUEUE = Queue(800) #큐
 # EEG_DATA = Queue(256)
@@ -28,7 +31,7 @@ def clearQueue(queue: Queue):
 def learn(): 
     if not config.disabled:
         config.toggleAbility()
-        PytorchAi.pytorchLearn()
+        ml.train() #AI
         config.toggleAbility()
         config.app.progress.grid_forget()
 
@@ -45,38 +48,77 @@ def record(button):
         config.pauseButton = pauseButton
 
 
+# def prediction():
+#     global isRunning
+#     threshold = 0.5  # 확률 기준
+#     lock = threading.Lock()
+    
+#     while isRunning:
+#         # UI 초기화
+#         for x in DataManager.keybindWidget.elements:
+#             x[0].configure(fg_color="#292929")
+        
+#         # 마지막 256 샘플 추출
+#         with lock:
+#             if len(list(EEG_QUEUE.queue)) >= 256:
+#                 window = np.array(list(EEG_QUEUE.queue)[-256:])  # (Samples, Chans)
+        
+#                 filtered_window = np.zeros_like(window)
+#                 for ch in range(window.shape[1]):
+#                     filtered_window[:, ch] = AiFilter.filterEEG(window[:, ch])
+
+#                 # 입력 차원 맞추기: (batch, 1, Chans, Samples)
+#                 X_tensor = torch.tensor(filtered_window.T[np.newaxis, :, :], dtype=torch.float32).to(PytorchAi.device)
+                
+#                 # 모델 예측
+#                 PytorchAi.model.eval()
+#                 with torch.no_grad():
+#                     logits = PytorchAi.model(X_tensor)                # (1, n_classes)
+#                     probs = F.softmax(logits, dim=1).cpu().numpy()    # 확률로 변환
+
+#                 # 확률 기준 선택
+#                 max_prob = np.max(probs)
+#                 if max_prob > threshold:
+#                     pred_class = np.argmax(probs)
+#                     print(probs)
+#                     DataManager.keybindWidget.elements[pred_class][0].configure(fg_color="#206AA4")
+#                     pressKey(pred_class)
+
 def prediction():
     global isRunning
-    threshold = 0.5  # 확률 기준
+    threshold = 0.9  # 확률 기준
     lock = threading.Lock()
-    
     while isRunning:
         # UI 초기화
         for x in DataManager.keybindWidget.elements:
             x[0].configure(fg_color="#292929")
-        
-        # 마지막 256 샘플 추출
         with lock:
-            if len(list(EEG_QUEUE.queue)) >= 256:
-                window = np.array(list(EEG_QUEUE.queue)[-256:])  # (Samples, Chans)
-        
-                filtered_window = np.zeros_like(window)
+            if len(list(EEG_QUEUE.queue)) >= 784:
+                window = np.array(list(EEG_QUEUE.queue)[-768:])  # (Samples, Chans)
+                # 필터링
+                filtered = np.zeros_like(window)
                 for ch in range(window.shape[1]):
-                    filtered_window[:, ch] = AiFilter.filterEEG(window[:, ch])
-
-                # 입력 차원 맞추기: (batch, 1, Chans, Samples)
-                X_tensor = torch.tensor(filtered_window.T[np.newaxis, :, :], dtype=torch.float32).to(PytorchAi.device)
+                    filtered[:, ch] = AiFilter.filterEEG(window[:, ch])
                 
-                # 모델 예측
-                PytorchAi.model.eval()
-                with torch.no_grad():
-                    logits = PytorchAi.model(X_tensor)                # (1, n_classes)
-                    probs = F.softmax(logits, dim=1).cpu().numpy()    # 확률로 변환
+                # baseline 제거
+                filtered -= ml.baseline_mean
+                #정규화
+                filtered = (filtered - filtered.mean(axis=0, keepdims=True)) / (filtered.std(axis=0, keepdims=True) + 1e-6)
 
-                # 확률 기준 선택
+                # 4. shape 변환 (Chans, Samples)
+                processed_window = filtered.T
+
+                # 5. Covariance → Tangent Space → 스케일링
+                cov = Covariances().fit_transform(np.expand_dims(processed_window, axis=0))
+                X_ts = ml.ts.transform(cov)
+                X_scaled = ml.scaler.transform(X_ts)
+
+                # 6. Logistic Regression 예측
+                probs = ml.clf.predict_proba(X_scaled)[0]
                 max_prob = np.max(probs)
+
                 if max_prob > threshold:
-                    pred_class = np.argmax(probs)
+                    pred_class = np.argmax(probs) + 1
                     print(probs)
                     DataManager.keybindWidget.elements[pred_class][0].configure(fg_color="#206AA4")
                     pressKey(pred_class)
@@ -142,7 +184,12 @@ def terminate():
 
     try:
         fileName = config.other_screen.getData().get()
-        with open(config.path("data", fileName+".csv"), "w", newline='') as file:
+        count = len(list(filter(lambda files: files.startswith(fileName), os.listdir(path("data")))))
+        filePath = path("data", fileName+str(count)+".csv")
+        if os.path.getsize(path("data", fileName+".csv")) == 0:
+            filePath = path("data", fileName+".csv")
+        
+        with open(filePath, "w", newline='') as file:
             writer = csv.writer(file)
             writer.writerows(BUFFER[:256*30])
     except Exception as e: print("[terminate] 이미 파일이 열려있거나 예기치 못한 오류\n" + str(e))
@@ -153,6 +200,7 @@ def terminate():
         recordButton = config.buttonGenerate(master=config.app, text="기록", row=4, index=0, columnspan=2, full=True)
         recordButton.configure(command=partial(record, recordButton))
         config.toggleAbility()
+        
 
 muse = None
 lslSartEvent = threading.Event()

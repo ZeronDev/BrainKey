@@ -6,8 +6,9 @@ import pickle
 import json
 from copy import deepcopy
 # import watchdog.observers
+import re
 
-def reload(): return list(map(lambda fileName: os.path.splitext(fileName)[0],os.listdir(path("data"))))
+def reload(): return [f for f in list(map(lambda fileName: os.path.splitext(fileName)[0],os.listdir(path("data")))) if not re.search(r"\d$", f.split(".")[0])]
 eegData = reload()
 
 # if "keybind.pickle" in eegData: eegData.remove("keybind.pickle")

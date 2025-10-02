@@ -1,6 +1,7 @@
 import os
 import customtkinter as ctk
 import time
+import winsound
 
 stopped = False
 other_screen = None
@@ -52,6 +53,7 @@ class TimerProgressBar:
         else:
             self.progressbar.set(1.0)
             self.progressbar.grid_forget()
+            winsound.Beep(2000, 500)
             self.terminate()
 
     def pause(self):
